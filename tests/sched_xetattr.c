@@ -70,6 +70,12 @@ main(void)
 	struct sched_attr *const attr = tail_alloc(sizeof(*attr));
 	void *const efault = attr + 1;
 
+	sys_sched_getattr(0, 0, 0, 0);
+	printf("sched_getattr(0, NULL, 0, 0) = %s\n", errstr);
+
+	sys_sched_getattr(0, (unsigned long) attr, 0, 0);
+	printf("sched_getattr(0, %p, 0, 0) = %s\n", attr, errstr);
+
 	sys_sched_getattr(bogus_pid, 0, 0, 0);
 	printf("sched_getattr(%d, NULL, 0, 0) = %s\n", (int) bogus_pid, errstr);
 
@@ -146,6 +152,34 @@ main(void)
 	       attr->sched_runtime,
 	       attr->sched_deadline,
 	       attr->sched_period);
+
+	attr->size = 0;
+
+	if (sys_sched_setattr(0, (unsigned long) attr, 0))
+		perror_msg_and_fail("sched_setattr");
+	printf("sched_setattr(0, {size=%u, sched_policy=", attr->size);
+	printxval(schedulers, attr->sched_policy, NULL);
+	printf(", sched_flags=%s, sched_nice=%d, sched_priority=%u"
+	       ", sched_runtime=%" PRIu64 ", sched_deadline=%" PRIu64
+	       ", sched_period=%" PRIu64 "}, 0) = 0\n",
+	       "SCHED_FLAG_RESET_ON_FORK",
+	       attr->sched_nice,
+	       attr->sched_priority,
+	       attr->sched_runtime,
+	       attr->sched_deadline,
+	       attr->sched_period);
+
+	attr->size = 1;
+
+	sys_sched_setattr(0, (unsigned long) attr, 0);
+	printf("sched_setattr(0, {size=%u} => {size=%u}, 0) = %s\n",
+	       1, attr->size, errstr);
+
+	attr->size = SCHED_ATTR_MIN_SIZE - 1;
+
+	sys_sched_setattr(0, (unsigned long) attr, 0);
+	printf("sched_setattr(0, {size=%u} => {size=%u}, 0) = %s\n",
+	       SCHED_ATTR_MIN_SIZE - 1, attr->size, errstr);
 
 	attr->size = 0x90807060;
 	attr->sched_policy = 0xca7faced;
